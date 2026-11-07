@@ -1,0 +1,570 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Autómata de pila PDA 4</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: cuaderno cuadriculado; simulador primero (diagrama, cinta y pila), luego la descripción formal en secciones */
+:root{
+  --paper:#f6f8fc; --surface:#ffffff; --ink:#1b2333; --muted:#5a6479; --line:#d3daea; --grid:#e3e9f5;
+  --accent:#2445c4; --accent-soft:#e6ebfb; --mark:#ffe24a; --mark-ink:#352c00;
+  --ok:#17784a; --ok-soft:#e2f4ea; --bad:#b42318; --bad-soft:#fbe7e5;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#0f131c; --surface:#161c29; --ink:#e5e9f3; --muted:#9aa4ba; --line:#2a3348; --grid:#1b2232;
+  --accent:#8ea4ff; --accent-soft:#1f2946; --mark:#ffd93d; --mark-ink:#2a2300;
+  --ok:#5ed39b; --ok-soft:#12301f; --bad:#ff8b80; --bad-soft:#3a1714; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#0f131c; --surface:#161c29; --ink:#e5e9f3; --muted:#9aa4ba; --line:#2a3348; --grid:#1b2232;
+  --accent:#8ea4ff; --accent-soft:#1f2946; --mark:#ffd93d; --mark-ink:#2a2300;
+  --ok:#5ed39b; --ok-soft:#12301f; --bad:#ff8b80; --bad-soft:#3a1714; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 48px}
+.wrap{max-width:1120px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.08rem;font-weight:500;color:var(--muted)}
+p{margin:0}
+code,.mono{font-family:var(--f-mono)}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+header.top{padding-block:40px 24px;display:grid;gap:14px;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lang{font-family:var(--f-mono);font-size:clamp(1rem,2.6vw,1.35rem);background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:10px 14px;width:fit-content;max-width:100%;overflow-x:auto}
+.meta{display:flex;flex-wrap:wrap;gap:6px 22px;color:var(--muted);font-size:.92rem}
+.meta b{color:var(--ink);font-weight:500}
+
+nav.toc{position:sticky;top:env(safe-area-inset-top, 0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line);margin-bottom:28px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--paper)}
+nav.toc ul{list-style:none;margin:0;padding:10px 0;display:flex;gap:6px;overflow-x:auto;white-space:nowrap}
+nav.toc a{display:block;padding:6px 10px;border-radius:6px;text-decoration:none;color:var(--muted);font-size:.9rem}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+
+section{padding-block:28px;display:grid;gap:16px;scroll-margin-top:64px}
+section + section{border-top:1px solid var(--line)}
+.lead{color:var(--muted);max-width:68ch}
+
+/* Simulador */
+.sim{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:18px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:grid;gap:4px;flex:1 1 260px;min-width:0}
+.field label{font-size:.82rem;color:var(--muted)}
+.field input{font:600 1.05rem var(--f-mono);padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:100%}
+.err{color:var(--bad);font-size:.85rem;min-height:1.2em}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:500 .92rem var(--f-body);border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:9px 14px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.presets span{font-size:.82rem;color:var(--muted);margin-right:4px}
+.chip{font:400 .8rem var(--f-mono);padding:4px 9px;border-radius:999px}
+.chip small{font-family:var(--f-body);color:var(--muted);margin-left:4px}
+.speed{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+
+.tapebox{overflow-x:auto;padding-bottom:4px}
+.tape{display:flex;gap:3px;width:max-content;padding:4px 2px 22px}
+.cell{position:relative;width:34px;height:40px;display:grid;place-items:center;font:600 1.05rem var(--f-mono);
+  border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.cell.done{color:var(--muted);opacity:.55}
+.cell.cur{border:2px solid var(--accent);background:var(--accent-soft)}
+.cell.cur::after{content:"▲";position:absolute;bottom:-20px;font-size:.75rem;color:var(--accent)}
+.cell.end{border-style:dashed;color:var(--muted)}
+
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:10px;
+  background-color:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+.diagram svg{display:block;min-width:700px;width:100%;height:auto}
+.st circle{fill:var(--surface);stroke:var(--ink);stroke-width:1.6}
+.st text{font:600 15px var(--f-mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.st.on circle.outer{fill:var(--mark);stroke:var(--accent);stroke-width:3}
+.st.on text{fill:var(--mark-ink)}
+.st.acc circle.outer{fill:var(--ok-soft)}
+.edge path,.edge line{fill:none;stroke:var(--muted);stroke-width:1.4}
+.edge text{font:400 12px var(--f-mono);fill:var(--ink);paint-order:stroke;stroke:var(--paper);stroke-width:4px;stroke-linejoin:round}
+.edge.on path,.edge.on line{stroke:var(--accent);stroke-width:2.6}
+.edge.on text{fill:var(--accent);font-weight:600}
+.mk{fill:var(--muted)} .mk-on{fill:var(--accent)}
+
+.panels{display:grid;grid-template-columns:170px minmax(0,1fr);gap:16px}
+.panel{border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0;background:var(--paper)}
+.panel h3{font-size:.8rem;letter-spacing:.07em;text-transform:uppercase;font-family:var(--f-body);font-weight:600}
+.stack{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:120px;justify-content:flex-end}
+.slot{width:64px;height:30px;display:grid;place-items:center;font:600 .98rem var(--f-mono);border:1px solid var(--ink);border-radius:4px;background:var(--surface)}
+.slot.top{background:var(--mark);color:var(--mark-ink)}
+.slot.bottom{border-style:double;border-width:3px}
+.slot.new{animation:drop .3s ease-out}
+@keyframes drop{from{transform:translateY(-14px);opacity:0}to{transform:none;opacity:1}}
+.stack-label{font-size:.78rem;color:var(--muted);text-align:center}
+.cur-trans{font:600 1.05rem var(--f-mono);overflow-x:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.92rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono)}
+.verdict{border-radius:8px;padding:10px 12px;font-weight:600}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.bad{background:var(--bad-soft);color:var(--bad)}
+.verdict.run{background:var(--accent-soft);color:var(--accent)}
+.verdict p{font-weight:400;font-size:.9rem;margin-top:2px}
+
+.logs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.log{max-height:340px;overflow:auto;margin:0;font:400 .82rem/1.65 var(--f-mono);white-space:pre}
+.log .last{background:var(--mark);color:var(--mark-ink)}
+
+/* Contenido */
+.formal{font-family:var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre;font-size:.95rem;line-height:1.75;margin:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.box{display:grid;gap:8px;min-width:0}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.m{font-family:var(--f-mono)}
+td.wrap{white-space:normal;min-width:220px}
+tbody tr:last-child td{border-bottom:0}
+tr.hl td{background:var(--mark);color:var(--mark-ink)}
+tr.total td{font-weight:600}
+.tuple{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-family:var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto}
+.tuple dt{font-weight:600} .tuple dd{margin:0}
+.video{display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.video a.btn{display:inline-block;background:var(--accent);color:var(--surface);text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:500}
+footer{color:var(--muted);font-size:.85rem;padding-top:24px;border-top:1px solid var(--line)}
+
+@media (max-width:760px){
+  .panels{grid-template-columns:1fr}
+  .logs{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){ .slot.new{animation:none} }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Universidad Mariano Gálvez de Guatemala · Cobán, Alta Verapaz · Ingeniería en Sistemas</p>
+    <h1>Autómata de pila PDA 4</h1>
+    <div class="lang">L = { x<sup>*</sup> y<sup>2n</sup> z<sup>m</sup> z<sup>m+2</sup> y<sup>3n</sup> | n ≥ 1, m ≥ 2 }</div>
+    <div class="meta">
+      <span>Estudiante: <b>Job Juan José Juárez Caal</b></span>
+      <span>Carnet: <b>0902-22-12946</b></span>
+      <span>Curso: <b>Autómatas</b></span>
+      <span>Sección: <b>A</b></span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Secciones">
+    <ul>
+      <li><a href="#simulacion">Simulación</a></li>
+      <li><a href="#lenguaje">Lenguaje</a></li>
+      <li><a href="#gramatica">Gramática</a></li>
+      <li><a href="#formal">7-tupla</a></li>
+      <li><a href="#tabla">Tabla de transiciones</a></li>
+      <li><a href="#grados">Grados</a></li>
+      <li><a href="#extendida">Función extendida</a></li>
+      <li><a href="#id">ID</a></li>
+      <li><a href="#video">Video</a></li>
+    </ul>
+  </nav>
+
+  <section id="simulacion" aria-labelledby="h-sim">
+    <h2 id="h-sim">Simulación</h2>
+    <div class="sim">
+      <div class="controls">
+        <div class="field">
+          <label for="w">Cadena de entrada (x, y, z)</label>
+          <input id="w" type="text" value="yyzzzzzzyyy" autocomplete="off" spellcheck="false" maxlength="60">
+          <div class="err" id="err" role="alert"></div>
+        </div>
+        <div class="btns">
+          <button id="b-load" class="primary" type="button">Cargar</button>
+          <button id="b-step" type="button">Paso</button>
+          <button id="b-play" type="button">Reproducir</button>
+          <button id="b-all" type="button">Ejecutar todo</button>
+          <button id="b-reset" type="button">Reiniciar</button>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="presets" id="presets"><span>Cadenas de prueba:</span></div>
+        <label class="speed" for="speed">Velocidad <input id="speed" type="range" min="150" max="1500" step="50" value="700"></label>
+      </div>
+
+      <div class="tapebox" aria-label="Cinta de entrada"><div class="tape" id="tape"></div></div>
+
+      <div class="diagram" aria-label="Diagrama de estados">
+        <svg viewBox="0 0 880 340" role="img" aria-labelledby="dg-t">
+          <title id="dg-t">Diagrama del autómata de pila con los estados q0 a q10</title>
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto-start-reverse"><path class="mk" d="M0 0L10 5L0 10z"/></marker>
+            <marker id="ar-on" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path class="mk-on" d="M0 0L10 5L0 10z"/></marker>
+          </defs>
+          <g id="edges"></g>
+          <g id="nodes"></g>
+        </svg>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h3>Pila</h3>
+          <div class="stack-label">tope ↓</div>
+          <div class="stack" id="stack" aria-live="polite"></div>
+        </div>
+        <div class="panel">
+          <h3>Transición</h3>
+          <div class="cur-trans" id="cur-trans">—</div>
+          <dl class="kv">
+            <dt>Paso</dt><dd id="kv-step">0</dd>
+            <dt>Estado</dt><dd id="kv-state">q0</dd>
+            <dt>Falta leer</dt><dd id="kv-rest">—</dd>
+            <dt>Operación</dt><dd id="kv-op" style="font-family:var(--f-body)">—</dd>
+          </dl>
+          <div class="verdict run" id="verdict" aria-live="polite">En espera</div>
+        </div>
+      </div>
+
+      <div class="logs">
+        <div class="panel"><h3>Descripción instantánea (ID)</h3><pre class="log" id="log-id"></pre></div>
+        <div class="panel"><h3>Función de transición extendida</h3><pre class="log" id="log-ext"></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="lenguaje" aria-labelledby="h-len">
+    <h2 id="h-len">Lenguaje y expresión regular</h2>
+    <div class="grid2">
+      <div class="box"><h3>Lenguaje</h3>
+        <pre class="formal">L = { x* y²ⁿ zᵐ zᵐ⁺² y³ⁿ | n ≥ 1, m ≥ 2 }
+Σ = { x, y, z }</pre></div>
+      <div class="box"><h3>Expresión regular</h3>
+        <pre class="formal">^ x* (yy)ⁿ zzzzzz (zz)* (yyy)ⁿ $</pre></div>
+    </div>
+    <div class="grid2">
+      <div class="box"><h3>Cadena mínima (n = 1, m = 2)</h3><pre class="formal">w = yyzzzzzzyyy     |w| = 11</pre></div>
+      <div class="box"><h3>Cadena promedio (n = 2, m = 3)</h3><pre class="formal">w = xxyyyyzzzzzzzzyyyyyy     |w| = 20</pre></div>
+    </div>
+  </section>
+
+  <section id="gramatica" aria-labelledby="h-gram">
+    <h2 id="h-gram">Gramática</h2>
+    <div class="grid2">
+      <div class="box"><h3>Gramática original</h3>
+        <pre class="formal">S  → AB
+A  → xA | ε
+B  → yyByyy | yyCyyy
+C  → zzzzzzD
+D  → zzD | ε</pre></div>
+      <div class="box"><h3>Gramática factorizada</h3>
+        <pre class="formal">S  → AB
+A  → xA | ε
+B  → yyB'
+B' → Byyy | Cyyy
+C  → zzzzzzD
+D  → zzD | ε</pre></div>
+    </div>
+    <div class="box"><h3>Derivación por la izquierda · w = yyzzzzzzyyy</h3>
+      <pre class="formal">S ⇒ AB ⇒ B ⇒ yyB' ⇒ yyCyyy ⇒ yyzzzzzzDyyy ⇒ yyzzzzzzyyy</pre></div>
+    <div class="box"><h3>Derivación por la izquierda · w = xxyyyyzzzzzzzzyyyyyy</h3>
+      <pre class="formal">S ⇒ AB ⇒ xAB ⇒ xxAB ⇒ xxB ⇒ xxyyB' ⇒ xxyyByyy ⇒ xxyyyyB'yyy
+  ⇒ xxyyyyCyyyyyy ⇒ xxyyyyzzzzzzDyyyyyy ⇒ xxyyyyzzzzzzzzDyyyyyy
+  ⇒ xxyyyyzzzzzzzzyyyyyy</pre></div>
+  </section>
+
+  <section id="formal" aria-labelledby="h-formal">
+    <h2 id="h-formal">Descripción formal (7-tupla)</h2>
+    <dl class="tuple">
+      <dt>M</dt><dd>= (Q, Σ, Γ, δ, q₀, Z₀, F)</dd>
+      <dt>Q</dt><dd>= { q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10 }</dd>
+      <dt>Σ</dt><dd>= { x, y, z }</dd>
+      <dt>Γ</dt><dd>= { 1, Z }</dd>
+      <dt>q₀</dt><dd>= q0  (q<sub>I</sub>)</dd>
+      <dt>Z₀</dt><dd>= Z</dd>
+      <dt>F</dt><dd>= { q10 }  (q<sub>F</sub>)</dd>
+    </dl>
+    <div class="box"><h3>Estado de función de transición · (estado, saca, lee = pasa a, mete)</h3>
+      <pre class="formal" id="delta"></pre></div>
+  </section>
+
+  <section id="tabla" aria-labelledby="h-tabla">
+    <h2 id="h-tabla">Tabla de transiciones</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>No.</th><th>Estado</th><th>Lee</th><th>Saca</th><th>Mete</th><th>Pasa a</th><th>Operación</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <section id="grados" aria-labelledby="h-grados">
+    <h2 id="h-grados">Grados de los estados</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Estado</th><th>Grado de entrada</th><th>Grado de salida</th><th>Papel</th></tr></thead>
+      <tbody id="tgrados"></tbody>
+    </table></div>
+  </section>
+
+  <section id="extendida" aria-labelledby="h-ext">
+    <h2 id="h-ext">Función de transición extendida</h2>
+    <div class="box"><h3>w = yyzzzzzzyyy</h3><pre class="formal" id="ext-min"></pre></div>
+    <div class="box"><h3>w = xxyyyyzzzzzzzzyyyyyy</h3><pre class="formal" id="ext-prom"></pre></div>
+  </section>
+
+  <section id="id" aria-labelledby="h-id">
+    <h2 id="h-id">Descripción instantánea (ID)</h2>
+    <div class="grid2">
+      <div class="box"><h3>w = yyzzzzzzyyy</h3><pre class="formal" id="id-min"></pre></div>
+      <div class="box"><h3>w = xxyyyyzzzzzzzzyyyyyy</h3><pre class="formal" id="id-prom"></pre></div>
+    </div>
+  </section>
+
+  <section id="video" aria-labelledby="h-video">
+    <h2 id="h-video">Video</h2>
+    <div class="video" id="video-box"></div>
+  </section>
+
+  <footer>Autómatas · Sección A · Autómata de pila PDA 4</footer>
+</div>
+
+<script>
+const VIDEO_URL = "";
+
+const E = "ε";
+const T = [
+  {n:1, from:"q0", read:"x", pop:E, push:E, to:"q0", op:"Lee las x, no toca la pila"},
+  {n:2, from:"q0", read:"y", pop:E, push:E, to:"q1", op:"Primera y de un par"},
+  {n:3, from:"q1", read:"y", pop:E, push:"111", to:"q2", op:"Segunda y del par: apila tres 1"},
+  {n:4, from:"q2", read:"y", pop:E, push:E, to:"q1", op:"Empieza otro par de y"},
+  {n:5, from:"q2", read:"z", pop:E, push:E, to:"q3", op:"1.ª z"},
+  {n:6, from:"q3", read:"z", pop:E, push:E, to:"q4", op:"2.ª z"},
+  {n:7, from:"q4", read:"z", pop:E, push:E, to:"q5", op:"3.ª z"},
+  {n:8, from:"q5", read:"z", pop:E, push:E, to:"q6", op:"4.ª z"},
+  {n:9, from:"q6", read:"z", pop:E, push:E, to:"q7", op:"5.ª z"},
+  {n:10, from:"q7", read:"z", pop:E, push:E, to:"q8", op:"6.ª z o cualquier cantidad par mayor"},
+  {n:11, from:"q8", read:"z", pop:E, push:E, to:"q7", op:"Cantidad impar: falta una z"},
+  {n:12, from:"q8", read:"y", pop:"1", push:E, to:"q9", op:"Primera y del final: desapila un 1"},
+  {n:13, from:"q9", read:"y", pop:"1", push:E, to:"q9", op:"Cada y del final desapila un 1"},
+  {n:14, from:"q9", read:E, pop:"Z", push:"Z", to:"q10", op:"Solo queda el fondo: acepta"}
+];
+const FINAL = "q10";
+const GRADOS = [
+  ["q0",1,2,"Inicial, lee las x"],["q1",2,1,"Leyó una y del par"],["q2",1,2,"Completó un par de y"],
+  ["q3",1,1,"1 z"],["q4",1,1,"2 z"],["q5",1,1,"3 z"],["q6",1,1,"4 z"],
+  ["q7",2,1,"Cantidad impar de z (5, 7, 9…)"],["q8",1,2,"Cantidad par de z, 6 o más"],
+  ["q9",2,2,"Desapila las y del final"],["q10",1,0,"Aceptación"]
+];
+
+/* ---------- Motor del autómata ---------- */
+function stackStr(s){ return s.length ? s.join("") : E; }
+function findMove(state, input, pos, stack){
+  const top = stack[0];
+  for (const t of T){
+    if (t.from !== state) continue;
+    if (t.pop !== E && t.pop !== top) continue;
+    if (t.read === E) return t;
+    if (pos < input.length && input[pos] === t.read) return t;
+  }
+  return null;
+}
+function run(input){
+  let state = "q0", pos = 0, stack = ["Z"];
+  const steps = [{state, pos, stack:[...stack], t:null}];
+  let guard = 0;
+  while (guard++ < 500){
+    const t = findMove(state, input, pos, stack);
+    if (!t) break;
+    if (t.pop !== E) stack.shift();
+    if (t.push !== E) stack = t.push.split("").concat(stack);
+    if (t.read !== E) pos++;
+    state = t.to;
+    steps.push({state, pos, stack:[...stack], t});
+    if (state === FINAL) break;
+  }
+  const last = steps[steps.length-1];
+  const accepted = last.state === FINAL && last.pos === input.length;
+  let reason;
+  if (accepted) reason = "Se leyó toda la cadena y se llegó a q10 con solo Z en la pila.";
+  else if (last.state === FINAL) reason = "Llegó a q10, pero quedaron símbolos sin leer: " + input.slice(last.pos) + ".";
+  else if (last.pos < input.length) reason = "No hay transición desde " + last.state + " leyendo «" + input[last.pos] + "» con " + last.stack[0] + " en el tope.";
+  else reason = "Se terminó la entrada en " + last.state + " con la pila " + stackStr(last.stack) + "; no se llegó a q10.";
+  return {steps, accepted, reason};
+}
+function idLine(input, s, i){ const c = "(" + s.state + ", " + (input.slice(s.pos) || E) + ", " + stackStr(s.stack) + ")"; return i === 0 ? c : "⊢ " + c; }
+function extLine(input, steps, i){
+  const s = steps[i];
+  const res = "(" + s.state + ", " + stackStr(s.stack) + ")";
+  if (i === 0) return "δ̂(q0, ε, Z) = " + res;
+  const p = steps[i-1], pre = "(" + p.state + ", " + stackStr(p.stack) + ")";
+  const w = input.slice(0, s.pos) || E;
+  if (s.t.read === E) return "δ̂(q0, " + w + ", Z) = δ(" + pre + ", ε) = " + res;
+  const wp = input.slice(0, s.pos - 1) || E;
+  return "δ̂(q0, " + w + ", Z) = δ(δ̂(q0, " + wp + ", Z), " + s.t.read + ") = δ(" + pre + ", " + s.t.read + ") = " + res;
+}
+function inge(t){ return "(" + t.from + ", " + t.pop + ", " + t.read + " = " + t.to + ", " + t.push + ")"; }
+
+/* ---------- Diagrama ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const POS = {q0:[70,100],q1:[190,100],q2:[320,100],q3:[440,100],q4:[560,100],q5:[680,100],q6:[800,100],
+             q7:[800,270],q8:[620,270],q9:[440,270],q10:[260,270]};
+const EDGES = [
+  {k:"q0-q0", d:"M58 79 C40 32, 100 32, 82 79", lx:70, ly:38, anc:"middle"},
+  {k:"q0-q1", d:"M95 100 L165 100", lx:130, ly:90},
+  {k:"q1-q2", d:"M211 88 Q255 62 299 88", lx:255, ly:64},
+  {k:"q2-q1", d:"M299 112 Q255 138 211 112", lx:255, ly:152},
+  {k:"q2-q3", d:"M345 100 L415 100", lx:380, ly:90},
+  {k:"q3-q4", d:"M465 100 L535 100", lx:500, ly:90},
+  {k:"q4-q5", d:"M585 100 L655 100", lx:620, ly:90},
+  {k:"q5-q6", d:"M705 100 L775 100", lx:740, ly:90},
+  {k:"q6-q7", d:"M800 125 L800 245", lx:812, ly:189, anc:"start"},
+  {k:"q7-q8", d:"M778 258 Q710 232 642 258", lx:710, ly:232},
+  {k:"q8-q7", d:"M642 282 Q710 308 778 282", lx:710, ly:322},
+  {k:"q8-q9", d:"M595 270 L465 270", lx:530, ly:260},
+  {k:"q9-q9", d:"M428 249 C410 202, 470 202, 452 249", lx:440, ly:207},
+  {k:"q9-q10", d:"M415 270 L285 270", lx:350, ly:260}
+];
+function labelFor(k){ return T.filter(t => t.from + "-" + t.to === k).map(t => t.read + ", " + t.pop + " ; " + t.push).join("  /  "); }
+function buildDiagram(){
+  const ge = document.getElementById("edges"), gn = document.getElementById("nodes");
+  const start = document.createElementNS(NS, "g"); start.setAttribute("class", "edge");
+  start.innerHTML = '<line x1="14" y1="100" x2="44" y2="100" marker-end="url(#ar)"/>';
+  ge.appendChild(start);
+  for (const e of EDGES){
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "edge"); g.setAttribute("id", "e-" + e.k);
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", e.d); p.setAttribute("marker-end", "url(#ar)");
+    const tx = document.createElementNS(NS, "text"); tx.setAttribute("x", e.lx); tx.setAttribute("y", e.ly);
+    tx.setAttribute("text-anchor", e.anc || "middle"); tx.textContent = labelFor(e.k);
+    g.append(p, tx); ge.appendChild(g);
+  }
+  for (const [q, [x, y]] of Object.entries(POS)){
+    const g = document.createElementNS(NS, "g"); g.setAttribute("class", "st"); g.setAttribute("id", "n-" + q);
+    let html = '<circle class="outer" cx="' + x + '" cy="' + y + '" r="24"/>';
+    if (q === FINAL) html += '<circle cx="' + x + '" cy="' + y + '" r="19" style="fill:none"/>';
+    html += '<text x="' + x + '" y="' + y + '">' + q + '</text>';
+    g.innerHTML = html; gn.appendChild(g);
+  }
+}
+
+/* ---------- Simulación interactiva ---------- */
+const $ = id => document.getElementById(id);
+let input = "", sim = null, idx = 0, timer = null;
+
+function validate(w){
+  if (!w.length) return "Escribí una cadena para simular.";
+  const bad = w.replace(/[xyz]/g, "");
+  if (bad.length) return "Solo se permiten x, y, z. Quitá: " + [...new Set(bad)].join(" ");
+  return "";
+}
+function load(){
+  stop();
+  const w = $("w").value.trim();
+  const msg = validate(w);
+  $("err").textContent = msg;
+  if (msg) return;
+  input = w; sim = run(input); idx = 0; render(true);
+}
+function render(fresh){
+  const s = sim.steps[idx];
+  const tape = $("tape"); tape.innerHTML = "";
+  [...input].forEach((c, i) => {
+    const d = document.createElement("div");
+    d.className = "cell" + (i < s.pos ? " done" : "") + (i === s.pos ? " cur" : "");
+    d.textContent = c; tape.appendChild(d);
+  });
+  const end = document.createElement("div"); end.className = "cell end" + (s.pos >= input.length ? " cur" : ""); end.textContent = "□"; tape.appendChild(end);
+
+  document.querySelectorAll(".st").forEach(n => n.classList.remove("on", "acc"));
+  $("n-" + s.state).classList.add("on");
+  document.querySelectorAll(".edge").forEach(e => { e.classList.remove("on"); const p = e.querySelector("path"); if (p) p.setAttribute("marker-end", "url(#ar)"); });
+  document.querySelectorAll("#tbody tr").forEach(r => r.classList.remove("hl"));
+  if (s.t){
+    const e = $("e-" + s.t.from + "-" + s.t.to);
+    if (e){ e.classList.add("on"); e.querySelector("path").setAttribute("marker-end", "url(#ar-on)"); }
+    const row = $("row-" + s.t.n); if (row) row.classList.add("hl");
+  }
+
+  const prev = idx > 0 ? sim.steps[idx-1].stack.length : s.stack.length;
+  const st = $("stack"); st.innerHTML = "";
+  s.stack.forEach((c, i) => {
+    const d = document.createElement("div");
+    d.className = "slot" + (i === 0 ? " top" : "") + (i === s.stack.length - 1 ? " bottom" : "") + (!fresh && i < s.stack.length - prev ? " new" : "");
+    d.textContent = c; st.appendChild(d);
+  });
+
+  $("cur-trans").textContent = s.t ? "#" + s.t.n + "  " + inge(s.t) : "Inicio: (q0, " + input + ", Z)";
+  $("kv-step").textContent = idx + " de " + (sim.steps.length - 1);
+  $("kv-state").textContent = s.state;
+  $("kv-rest").textContent = input.slice(s.pos) || E;
+  $("kv-op").textContent = s.t ? s.t.op : "Configuración inicial";
+
+  const done = idx === sim.steps.length - 1;
+  const v = $("verdict");
+  if (!done){ v.className = "verdict run"; v.textContent = "Procesando…"; }
+  else if (sim.accepted){
+    v.className = "verdict ok"; v.innerHTML = "Cadena aceptada<p></p>"; v.querySelector("p").textContent = sim.reason;
+    $("n-" + FINAL).classList.add("acc");
+  } else { v.className = "verdict bad"; v.innerHTML = "Cadena rechazada<p></p>"; v.querySelector("p").textContent = sim.reason; }
+
+  const ids = [], exts = [];
+  for (let i = 0; i <= idx; i++){ ids.push(idLine(input, sim.steps[i], i)); exts.push(extLine(input, sim.steps, i)); }
+  fillLog($("log-id"), ids); fillLog($("log-ext"), exts);
+  $("b-step").disabled = done; $("b-all").disabled = done; $("b-play").disabled = done;
+}
+function fillLog(el, lines){
+  el.innerHTML = "";
+  lines.forEach((l, i) => { const sp = document.createElement("span"); sp.textContent = l + "\n"; if (i === lines.length - 1) sp.className = "last"; el.appendChild(sp); });
+  el.scrollTop = el.scrollHeight;
+}
+function step(){ if (sim && idx < sim.steps.length - 1){ idx++; render(false); } if (sim && idx >= sim.steps.length - 1) stop(); }
+function play(){
+  if (timer){ stop(); return; }
+  $("b-play").textContent = "Pausa";
+  const tick = () => { step(); if (timer) timer = setTimeout(tick, +$("speed").value); };
+  timer = setTimeout(tick, 60);
+}
+function stop(){ if (timer) clearTimeout(timer); timer = null; $("b-play").textContent = "Reproducir"; }
+
+/* ---------- Contenido generado desde el mismo autómata ---------- */
+function buildContent(){
+  $("delta").textContent = "δ = {\n" + T.map(t => "  " + inge(t)).join(",\n") + "\n}";
+  $("tbody").innerHTML = T.map(t => '<tr id="row-' + t.n + '"><td>' + t.n + '</td><td class="m">' + t.from + '</td><td class="m">' + t.read + '</td><td class="m">' + t.pop + '</td><td class="m">' + t.push + '</td><td class="m">' + t.to + '</td><td class="wrap">' + t.op + '</td></tr>').join("");
+  $("tgrados").innerHTML = GRADOS.map(g => '<tr><td class="m">' + g[0] + '</td><td>' + g[1] + '</td><td>' + g[2] + '</td><td class="wrap">' + g[3] + '</td></tr>').join("")
+    + '<tr class="total"><td>Total</td><td>14</td><td>14</td><td></td></tr>';
+  for (const [w, a, b] of [["yyzzzzzzyyy","ext-min","id-min"],["xxyyyyzzzzzzzzyyyyyy","ext-prom","id-prom"]]){
+    const r = run(w);
+    $(a).textContent = r.steps.map((_, i) => extLine(w, r.steps, i)).join("\n") + "   ✔ aceptada";
+    $(b).textContent = r.steps.map((s, i) => idLine(w, s, i)).join("\n") + "   ✔ aceptada";
+  }
+  const vb = $("video-box");
+  if (VIDEO_URL){
+    vb.innerHTML = '<a class="btn" target="_blank" rel="noopener">Ver el video de la explicación</a>';
+    vb.querySelector("a").href = VIDEO_URL;
+  } else {
+    vb.innerHTML = '<p class="lead">Aquí va el enlace al video de la explicación.</p>';
+  }
+}
+const PRESETS = [
+  ["yyzzzzzzyyy","mínima"],["xxyyyyzzzzzzzzyyyyyy","promedio"],["xyyyyyyzzzzzzzzzzyyyyyyyyy",""],
+  ["yyzzzzyyy",""],["yyzzzzzzzyyy",""],["yyzzzzzzyy",""],["yyyzzzzzzyyy",""]
+];
+function buildPresets(){
+  const box = $("presets");
+  for (const [w, tag] of PRESETS){
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    b.textContent = w; if (tag){ const sm = document.createElement("small"); sm.textContent = tag; b.appendChild(sm); }
+    b.addEventListener("click", () => { $("w").value = w; load(); });
+    box.appendChild(b);
+  }
+}
+
+buildDiagram(); buildContent(); buildPresets();
+$("b-load").addEventListener("click", load);
+$("b-step").addEventListener("click", () => { stop(); step(); });
+$("b-play").addEventListener("click", play);
+$("b-all").addEventListener("click", () => { stop(); if (sim){ idx = sim.steps.length - 1; render(true); } });
+$("b-reset").addEventListener("click", () => { stop(); if (sim){ idx = 0; render(true); } });
+$("w").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); load(); } });
+$("w").addEventListener("input", () => { $("err").textContent = ""; });
+load();
+</script>
+
+</body></html>
